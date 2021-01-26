@@ -11,11 +11,11 @@ const newPosition = (x, y) => ({ x, y });
 // requires explicit context binding
 const INSTRUCTIONS = {
   // arithmetic
-  '+'() { this.stack.push(this.stack.pop(2).reduce((a, b) => b + a)) },
-  '*'() { this.stack.push(this.stack.pop(2).reduce((a, b) => b * a)) },
-  '-'() { this.stack.push(this.stack.pop(2).reduce((a, b) => b - a)) },
-  '/'() { this.stack.push(this.stack.pop(2).reduce((a, b) => b / a)) },
-  '%'() { this.stack.push(this.stack.pop(2).reduce((a, b) => b % a)) },
+  '+'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b + a)) },
+  '*'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b * a)) },
+  '-'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b - a)) },
+  '/'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b / a)) },
+  '%'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b % a)) },
   // cardinal directions
   '^'() { this.cursor.direction = '^' },
   '>'() { this.cursor.direction = '>' },
@@ -26,8 +26,8 @@ const INSTRUCTIONS = {
     this.cursor.direction = ['^', '>', 'v', '<'][rand];
   },
   // boolean logic
-  '!'() { this.stack.push(this.stack.pop()[0] ? 1 : 0) },
-  '`'() { this.stack.push(this.stack.pop(2).reduce((a, b) => (a > b ? 1 : 0)))},
+  '!'() { this.stack.push(this.stack.pop()[0] ? 0 : 1) },
+  '`'() { this.stack.push(this.stack.pop(2).reduce((b, a) => (a > b ? 1 : 0)))},
   '_'() { this.cursor.direction = (this.stack.pop()[0] ? '<' : '>') },
   '|'() { this.cursor.direction = (this.stack.pop()[0] ? '^' : 'v') },
   // mode shifting
@@ -40,23 +40,21 @@ const INSTRUCTIONS = {
   '$'()  { this.stack.pop() },
   '\\'() { this.stack.push(...this.stack.pop(2)) },
   // input/output
-  '.'() { output(this.stack.pop()[0]) },
+  '.'() { output('' + this.stack.pop()[0]) },
   ','() { output(String.fromCharCode(this.stack.pop()[0])) },
   '#'() { this.cursor.move() },
   '&'() { this.stack.push(+input()) },
   '~'() { this.stack.pushChr(input()) },
   // non-stack storage
   'g'() { // stub
-    let pos = newPosition(...this.stack.pop(2).reverse());
-    this.stack.push(this.grid.getAtPos(pos));
+    let pos = newPosition(...this.stack.pop(2));
+    this.stack.pushChr(this.grid.getAtPos(pos));
   },
   'p'() {
-    let pos = newPosition(...this.stack.pop(2).reverse());
+    let pos = newPosition(...this.stack.pop(2));
     let val = String.fromCharCode(this.stack.pop()[0]);
     this.grid.setAtPos(pos, val);
   },
-  // end of program
-  // '@'() { this.isComplete = true },
 };
 
 let newGrid = function(program) {
@@ -113,8 +111,6 @@ let newStack = function() {
     push(...items) { items.forEach(item => this.storage.push(item)) },
     pushChr(char) { this.push(char.charCodeAt()) },
     pop(num = 1) { return this.storage.splice(this.storage.length - num, num) },
-    // rPush(...items) { this.push(...(items.reverse())) },
-    // rPop(n) { return this.pop(n).reverse() },
   };
 };
 
@@ -147,6 +143,12 @@ let newState = function(program) {
       }
       cursor.move();
     },
+    iterateUntilComplete() {
+      let safetyCounter = 100000;
+      while (!this.isComplete && safetyCounter--) {
+        this.iterate();
+      }
+    }
   };
 };
 
@@ -155,12 +157,21 @@ let program = [
   '<v"Hello, world!"',
   ' >:#,_@'
 ].join('\n');
-// let app = newState(helloWorldProgram);
-// let program = '"asdf",,,,@';
+
 let app = newState(program);
 
-Array(200).fill(1).forEach(() => app.iterate());
-// while (!app.isComplete) app.iterate();
+app.iterateUntilComplete();
 console.log();
-console.log(`completed in ${app.iterations} iterations`);
-console.log(app.isComplete);
+console.log(`Completed in ${app.iterations} iterations`);
+
+let dnaCode = `\
+ >78*vD
+v$_#>vN
+7>!@  A
+3 :v??v
+9,-""""
+4+1ACGT
++,,""""
+>^^<<<<`;
+app = newState(dnaCode);
+app.iterateUntilComplete();
