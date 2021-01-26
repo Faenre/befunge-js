@@ -8,21 +8,26 @@ const input = function() {
 }();
 const isNumeric = (chr) => !!(chr.match(/[0-9]/));
 
-const newPosition = (x, y) => ({ x, y });
-let wraparound = (pos) => {
-  if (pos.x < 0) pos.x += X_SIZE;
-  else if (pos.x >= X_SIZE) pos.x -= X_SIZE;
-  if (pos.y < 0) pos.y += Y_SIZE;
-  else if (pos.y >= Y_SIZE) pos.y -= Y_SIZE;
-};
-const MOVEMENTS = {
-  '^'(pos) { pos.y -= 1 },
-  '>'(pos) { pos.x += 1 },
-  'v'(pos) { pos.y += 1 },
-  '<'(pos) { pos.x -= 1 },
+const newPosition = function(x, y) {
+  return {
+    x,
+    y,
+    move(dir) {
+      if      (dir === '^') this.y -= 1;
+      else if (dir === '>') this.x += 1;
+      else if (dir === 'v') this.y += 1;
+      else if (dir === '<') this.x -= 1;
+      this.wraparound();
+    },
+    wraparound() {
+      if (this.x < 0) this.x += X_SIZE;
+      else if (this.x >= X_SIZE) this.x -= X_SIZE;
+      if (this.y < 0) this.y += Y_SIZE;
+      else if (this.y >= Y_SIZE) this.y -= Y_SIZE;
+    },
+  };
 };
 
-// requires explicit context binding
 const INSTRUCTIONS = {
   // arithmetic
   '+'() { this.stack.push(this.stack.pop(2).reduce((b, a) => b + a)) },
@@ -95,11 +100,7 @@ let newCursor = function(grid) {
     direction: '>',
     grid,
     charAt() { return this.grid.getAtPos(this.position) },
-    move() {
-      MOVEMENTS[this.direction](this.position);
-      this.wraparound();
-    },
-    wraparound() { wraparound(this.position) },
+    move() { this.position.move(this.direction) },
     stringMode: false,
     toggleStringMode() { this.stringMode = !this.stringMode },
   };
