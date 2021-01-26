@@ -154,17 +154,17 @@ let befungeApp = function(program) {
   };
 };
 
-// let program = '<>:#,_@#:"Hello, world!"';
-let program = [
-  '<v"Hello, world!"',
-  ' >:#,_@'
-].join('\n');
+let program = `\
+<v"Hello, world!"
+ >:#,_@\
+`;
 
 let app = befungeApp(program);
 
 app.iterateUntilComplete();
 console.log();
 console.log(`Completed in ${app.iterations} iterations`);
+console.log();
 
 let dnaCode = `\
  >78*vD
@@ -174,6 +174,8 @@ v$_#>vN
 9,-""""
 4+1ACGT
 +,,""""
->^^<<<<`;
+>^^<<<<\
+`;
 app = befungeApp(dnaCode);
 app.iterateUntilComplete();
+console.log(`Completed in ${app.iterations} iterations`);
