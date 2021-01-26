@@ -1,3 +1,5 @@
+const X_SIZE = 80;
+const Y_SIZE = 25;
 
 const output = (text) => process.stdout.write(text);
 const input = function() {
@@ -7,6 +9,18 @@ const input = function() {
 const isNumeric = (chr) => !!(chr.match(/[0-9]/));
 
 const newPosition = (x, y) => ({ x, y });
+let wraparound = (pos) => {
+  if (pos.x < 0) pos.x += X_SIZE;
+  else if (pos.x >= X_SIZE) pos.x -= X_SIZE;
+  if (pos.y < 0) pos.y += Y_SIZE;
+  else if (pos.y >= Y_SIZE) pos.y -= Y_SIZE;
+};
+const MOVEMENTS = {
+  '^'(pos) { pos.y -= 1 },
+  '>'(pos) { pos.x += 1 },
+  'v'(pos) { pos.y += 1 },
+  '<'(pos) { pos.x -= 1 },
+};
 
 // requires explicit context binding
 const INSTRUCTIONS = {
@@ -58,8 +72,6 @@ const INSTRUCTIONS = {
 };
 
 let newGrid = function(program) {
-  const X_SIZE = 80;
-  const Y_SIZE = 25;
 
   let grid = Array(X_SIZE).fill(1).map(() => Array(Y_SIZE).fill(' '));
   program.split('\n').slice(0, Y_SIZE).forEach((rowContent, yIdx) => {
@@ -78,30 +90,18 @@ let newGrid = function(program) {
 };
 
 let newCursor = function(grid) {
-  const movements = {
-    '^'(pos) { pos.y -= 1 },
-    '>'(pos) { pos.x += 1 },
-    'v'(pos) { pos.y += 1 },
-    '<'(pos) { pos.x -= 1 },
-  };
   return {
     position: newPosition(0, 0),
     direction: '>',
     grid,
+    charAt() { return this.grid.getAtPos(this.position) },
     move() {
-      movements[this.direction](this.position);
+      MOVEMENTS[this.direction](this.position);
       this.wraparound();
     },
+    wraparound() { wraparound(this.position) },
     stringMode: false,
     toggleStringMode() { this.stringMode = !this.stringMode },
-    charAt() { return this.grid.getAtPos(this.position) },
-    wraparound() {
-      let pos = this.position;
-      if (pos.x < 0) pos.x += this.grid.X_SIZE;
-      else if (pos.x >= this.grid.X_SIZE) pos.x -= this.grid.X_SIZE;
-      if (pos.y < 0) pos.y += this.grid.Y_SIZE;
-      else if (pos.y >= this.grid.Y_SIZE) pos.y -= this.grid.Y_SIZE;
-    },
   };
 };
 
@@ -114,7 +114,26 @@ let newStack = function() {
   };
 };
 
-let newState = function(program) {
+let iterateState = function(context) {
+  if (context.isComplete) return;
+  else context.iterations++;
+
+  let char = context.cursor.charAt();
+  if (context.cursor.stringMode && char !== '"') context.stack.pushChr(char);
+  else {
+    while (context.cursor.charAt() === ' ') context.cursor.move();
+    char = context.cursor.charAt();
+
+    if (isNumeric(char)) context.stack.push(+char);
+    else if (char === '@') context.isComplete = true;
+    else if (Object.keys(INSTRUCTIONS).includes(char)) {
+      INSTRUCTIONS[char].call(context);
+    }
+  }
+  context.cursor.move();
+};
+
+let befungeApp = function(program) {
   let grid = newGrid(program);
   let cursor = newCursor(grid);
   let stack = newStack();
@@ -125,24 +144,7 @@ let newState = function(program) {
     stack,
     iterations: 0,
     isComplete: false,
-    iterate() {
-      if (this.isComplete) return;
-      else this.iterations++;
-
-      let char = cursor.charAt();
-      if (cursor.stringMode && char !== '"') stack.pushChr(char);
-      else {
-        while (cursor.charAt() === ' ') cursor.move();
-        char = cursor.charAt();
-
-        if (isNumeric(char)) stack.push(+char);
-        else if (char === '@') this.isComplete = true;
-        else if (Object.keys(INSTRUCTIONS).includes(char)) {
-          INSTRUCTIONS[char].call(this);
-        }
-      }
-      cursor.move();
-    },
+    iterate() { iterateState(this) },
     iterateUntilComplete() {
       let safetyCounter = 100000;
       while (!this.isComplete && safetyCounter--) {
@@ -158,7 +160,7 @@ let program = [
   ' >:#,_@'
 ].join('\n');
 
-let app = newState(program);
+let app = befungeApp(program);
 
 app.iterateUntilComplete();
 console.log();
@@ -173,5 +175,5 @@ v$_#>vN
 4+1ACGT
 +,,""""
 >^^<<<<`;
-app = newState(dnaCode);
+app = befungeApp(dnaCode);
 app.iterateUntilComplete();
